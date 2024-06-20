@@ -79,12 +79,13 @@ async def rls_tamam(message: types.Message):
 
 #پروفایل کاربر
 
-
 async def user_profile(message: types.Message):
     async with aiohttp.ClientSession() as session:
         async with session.get('https://api.nobitex.ir/users/profile', headers=headers) as response:
             data = await response.json()
             await message.reply(data)
+
+
 #منو کیف پول
 
 async def tamam_arz(message: types.Message):
@@ -96,12 +97,30 @@ async def tamam_arz(message: types.Message):
     await message.reply("لطفا یک گزینه را انتخاب کنید", reply_markup=keyboard)
 
 
-
-#کیف پول کاربر
+#کیف های پول کاربر
 
 async def list_kif(message: types.Message):
     async with aiohttp.ClientSession() as session:
         async with session.get('https://api.nobitex.ir/users/wallets/list', headers=headers) as response:
+            data = await response.json()
+            await message.reply(data)
+
+
+#موجودی هر کیف پول
+async def mojoodi(message: types.Message):
+    response = requests.get('https://api.nobitex.ir/users/wallets/list')
+    data = response.json()
+    binance_data_str = str(data)
+    
+    chunk_size = 4096  
+    for i in range(0, len(binance_data_str), chunk_size):
+        await message.reply(binance_data_str[i:i + chunk_size])
+
+
+#موجودی کل کیف پول ها
+async def mojoodi_kol(message: types.Message):
+    async with aiohttp.ClientSession() as session:
+        async with session.get('https://api.nobitex.ir/v2/wallets?currencies=rls,btc', headers=headers) as response:
             data = await response.json()
             await message.reply(data)
 
@@ -124,9 +143,9 @@ async def main():
     dp.register_message_handler(rls_tamam,text="به ریال")
 
     dp.register_message_handler(user_profile,text="پروفایل کاربر")
-    dp.register_message_handler(list_kif,text="لیست کیف پول ها")
-
-
+    dp.register_message_handler(list_kif,text="دریافت لیست کیف پول ها")
+    dp.register_message_handler(mojoodi,text="نمایش موجودی هر کیف پول")
+    dp.register_message_handler(mojoodi_kol,text="نمایش کل موجودی")
     
     await dp.start_polling()
 
