@@ -4,6 +4,8 @@ import requests
 import aiohttp
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils import executor
+import json
+
 
 token = 'd416a76ad6af5d4997aaffb78b802585636bf2f5'
 headers = {'Authorization': f'Token {token}'}
@@ -64,11 +66,13 @@ async def option_2_command(message: types.Message):
 
 #منو تمامی ارز ها
 async def usdt_tamam(message: types.Message):
+    
     response = requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     data = response.json()['global']['binance']
-    binance_data_str = str(data)
+    formatted_data = json.dumps(data, indent=4, ensure_ascii=False)
+    binance_data_str = str(formatted_data)
     
-    chunk_size = 4096  
+    chunk_size = 4096
     for i in range(0, len(binance_data_str), chunk_size):
         await message.reply(binance_data_str[i:i + chunk_size])
 
@@ -76,9 +80,10 @@ async def usdt_tamam(message: types.Message):
 async def rls_tamam(message: types.Message):
     response = requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
     data = response.json()['global']['binance']
-    binance_data_str = str(data)
+    formatted_data = json.dumps(data, indent=4, ensure_ascii=False)
+    binance_data_str = str(formatted_data)
     
-    chunk_size = 4096  
+    chunk_size = 4096
     for i in range(0, len(binance_data_str), chunk_size):
         await message.reply(binance_data_str[i:i + chunk_size])
 
@@ -101,14 +106,15 @@ async def list_arz(message: types.Message):
     keyboard.add(types.KeyboardButton("برگشت به منو اصلی"))
     await message.reply("لطفا یک گزینه را انتخاب کنید", reply_markup=keyboard)
 
-    
+
+
 #پروفایل کاربر
 
 async def user_profile(message: types.Message):
-    async with aiohttp.ClientSession() as session:
-        async with session.get('https://api.nobitex.ir/users/profile', headers=headers) as response:
-            data = await response.json()
-            await message.reply(data)
+    data=requests.get('https://api.nobitex.ir/users/profile', headers=headers)
+    data2=data.json()
+    formatted_data = json.dumps(data2, indent=4, ensure_ascii=False)
+    await message.reply(formatted_data)
 
 
 #منو کیف پول
@@ -127,31 +133,46 @@ async def kif(message: types.Message):
 
 async def list_kif(message: types.Message):
     response = requests.get('https://api.nobitex.ir/users/wallets/list', headers=headers)
-    data = response.json()["wallets"]
-    binance_data_str = str(data)
-    
+    data = response.json().get("wallets", [])
+        
+        
+    formatted_data = json.dumps(data, indent=4, ensure_ascii=False)
+        
     chunk_size = 4096  
-    for i in range(0, len(binance_data_str), chunk_size):
-        await message.reply(binance_data_str[i:i + chunk_size])
+    for i in range(0, len(formatted_data), chunk_size):
+        await message.reply(formatted_data[i:i + chunk_size])
+    
 
 
 #موجودی هر کیف پول
 async def mojoodi(message: types.Message):
-    response = requests.get('https://api.nobitex.ir/users/wallets/list')
+    response = requests.get('https://api.nobitex.ir/users/wallets/list', headers=headers)
     data = response.json()
-    binance_data_str = str(data)
-    
-    chunk_size = 4096  
-    for i in range(0, len(binance_data_str), chunk_size):
-        await message.reply(binance_data_str[i:i + chunk_size])
+
+    wallets = data.get('wallets', [])
+    response_message = "موجودی کیف پول‌ها:\n"
+    for wallet in wallets:
+        currency = wallet.get('currency', 'Unknown')
+        balance = wallet.get('balance', 'Unknown')
+        response_message += f"{currency}: {balance}\n"
+
+    await message.reply(response_message)
 
 
 #موجودی کل کیف پول ها
+
 async def mojoodi_kol(message: types.Message):
-    async with aiohttp.ClientSession() as session:
-        async with session.get('https://api.nobitex.ir/v2/wallets?currencies=rls,btc', headers=headers) as response:
-            data = await response.json()
-            await message.reply(data)
+    
+    response = requests.get('https://api.nobitex.ir/users/wallets/list', headers=headers)
+    data = response.json()
+    
+    wallets = data.get('wallets', [])
+    
+    total_balance = sum(float(wallet.get('balance', '0')) for wallet in wallets)
+    
+    await message.reply(f"موجودی کل کیف پول‌ها: {total_balance}")
+
+
 
 #لیست تراکنش ها
 async def tarakonesh(message: types.Message):
@@ -161,7 +182,17 @@ async def tarakonesh(message: types.Message):
     
     chunk_size = 4096  
     for i in range(0, len(binance_data_str), chunk_size):
-        await message.reply(binance_data_str[i:i + chunk_size])
+        await message.reply(f'transactions for wallet(80928448):{binance_data_str[i:i + chunk_size]}')
+
+#لیست واریزی ها
+async def variz(message: types.Message):
+    response = requests.get('https://api.nobitex.ir/users/wallets/deposits/list?wallet=80928448',headers=headers)
+    data = response.json()['deposits']
+    binance_data_str = str(data)
+    
+    chunk_size = 4096  
+    for i in range(0, len(binance_data_str), chunk_size):
+        await message.reply(f'deposits for wallet(80928448):{binance_data_str[i:i + chunk_size]}')
 
 #منو بازار های مورد علاقه 
 async def menu_bazar(message: types.Message):
@@ -174,11 +205,10 @@ async def menu_bazar(message: types.Message):
 
 
 
-
 #لیست بازار های مورد علاقه
 async def favorite_list(message: types.Message):
-    response = requests.get('https://api.nobitex.ir/users/markets/favorite')
-    data = response.json()
+    response = requests.get('https://api.nobitex.ir/users/markets/favorite',headers=headers)
+    data = response.json()["favoriteMarkets"]
     binance_data_str = str(data)
 
     chunk_size = 4096  
@@ -186,362 +216,451 @@ async def favorite_list(message: types.Message):
         await message.reply(binance_data_str[i:i + chunk_size])
 
 
-# ثبت بازار های مورد علاقه
-
-
-
-
-
-
-#حذف بازار های مورد علاقه
-
-
-
 
 #قیمت ارز ها 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def rls(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=rls&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=rls&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def eth(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=eth&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=eth&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def ltc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ltc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ltc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def usdt(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def xrp(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def btc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def rls(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=rls&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=rls&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def eth(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=eth&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=eth&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def ltc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ltc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ltc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def usdt(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def xrp(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=btc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def bch(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=bch&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=bch&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def bnb(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=bnb&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=bnb&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def eos(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=eos&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=eos&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def xlm(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=xlm&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=xlm&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def etc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=etc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=etc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def trx(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=trx&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=trx&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def pmn(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=pmn&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=pmn&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def doge(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=doge&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=doge&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def uni(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=uni&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=uni&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def dai(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dai&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dai&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def link(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=link&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=link&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def dot(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dot&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dot&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def aave(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=aave&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=aave&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def pmn(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=pmn&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=pmn&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def doge(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=doge&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=doge&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def uni(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=uni&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=uni&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def dai(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dai&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dai&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def link(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=link&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=link&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def dot(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dot&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=dot&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def aave(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=aave&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=aave&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def ada(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ada&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ada&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def shib(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=shib&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=shib&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def ftm(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ftm&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=ftm&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def matic(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=matic&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=matic&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def axs(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=axs&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=axs&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def mana(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=mana&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=mana&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def sand(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=sand&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=sand&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def avax(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=avax&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=avax&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def mkr(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=mkr&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=mkr&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def gmt(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=gmt&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=gmt&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
 async def usdc(message: types.Message):
     response= requests.get('https://api.nobitex.ir/market/stats?srcCurrency=usdc&dstCurrency=usdt')
     response2 =requests.get('https://api.nobitex.ir/market/stats?srcCurrency=usdc&dstCurrency=rls')
-    data = response.json()['stats']
-    data2 = response.json()['stats']
-    await message.reply(f"rial:{data}\n\nusdt:{data2}")
+    datai = response.json()['stats']
+    datai2 = response2.json()['stats']
+    data = json.dumps(datai, indent=4, ensure_ascii=False)
+    data2 = json.dumps(datai2, indent=4, ensure_ascii=False)
+    await message.reply(f"usdt:{data}\n\nrial:{data2}")
 
+
+# ثبت بازار های مورد علاقه
 async def list_arz2(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(types.KeyboardButton('BTCIRT ثبت'),types.KeyboardButton('ETHIRT ثبت'))
@@ -553,6 +672,8 @@ async def list_arz2(message: types.Message):
     keyboard.add(types.KeyboardButton("برگشت به منو اصلی"))
     await message.reply("لطفا یک گزینه را انتخاب کنید", reply_markup=keyboard)
 
+
+#حذف بازار های مورد علاقه
 async def list_arz3(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(types.KeyboardButton('BTCIRT حذف'),types.KeyboardButton('ETHIRT حذف'))
@@ -564,31 +685,35 @@ async def list_arz3(message: types.Message):
     keyboard.add(types.KeyboardButton("برگشت به منو اصلی"))
     await message.reply("لطفا یک گزینه را انتخاب کنید", reply_markup=keyboard)
 
+
 headers2 = {
-    'Content-Type': 'application/json',
-    'Authorization': f'Bearer {token}'
+    'Authorization': 'd416a76ad6af5d4997aaffb78b802585636bf2f5', 
+    'Content-Type': 'application/json'
 }
+
 
 async def BTCIRT_s(message: types.Message):
     url='https://api.nobitex.ir/users/markets/favorite'
     data = {'market': 'BTCIRT'}
-    response = requests.post(url, headers=headers2, json=data)
+    response = requests.post(url, headers=headers)
     if response.status_code == 200:
-        print("عملیات ثبت با موفیقت انجام شد")
+        await message.reply("عملیات ثبت با موفیقت انجام شد")
         
     else:
-        print("عملیات ثبت با شکست مواجه شد")
+        await message.reply("عملیات ثبت با شکست مواجه شد")
+
 
 
 async def BTCIRT_d(message: types.Message):
     url='https://api.nobitex.ir/users/markets/favorite'
     data = {'market': 'BTCIRT'}
-    response = requests.post(url, headers=headers2, json=data)
+    response = requests.delete(url, headers=headers2, json=data)
     if response.status_code == 200:
-        print("عملیات حذف با موفیقت انجام شد")
+        await message.reply("عملیات حذف با موفیقت انجام شد")
         
     else:
-        print("عملیات حذف با شکست مواجه شد")
+        await message.reply("عملیات حذف با شکست مواجه شد")
+
 
 
 
@@ -617,6 +742,7 @@ async def main():
     dp.register_message_handler(mojoodi,text="نمایش موجودی هر کیف پول")
     dp.register_message_handler(mojoodi_kol,text="نمایش کل موجودی")
     dp.register_message_handler(tarakonesh,text="لیست تراکنش ها")
+    dp.register_message_handler(variz,text="لیست واریزی ها")
     
     dp.register_message_handler(favorite_list,text="لیست بازار های مورد علاقه")
     dp.register_message_handler(list_arz2,text="اضافه کردن بازار مورد علاقه")
@@ -654,12 +780,13 @@ async def main():
     dp.register_message_handler(gmt,text="gmt")
     dp.register_message_handler(usdc,text="usdc")
 
+    dp.register_message_handler(menu_bazar,text="بازار های مورد علاقه")
     dp.register_message_handler(BTCIRT_s,text="BTCIRT ثبت")
     dp.register_message_handler(BTCIRT_d,text='BTCIRT حذف')
 
     await dp.start_polling()
 
-#قیمت ارز انتخابی
+
 
 
 
