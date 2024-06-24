@@ -712,7 +712,7 @@ async def BTCIRT_d(message: types.Message):
 
 
 async def main():
-    bot = Bot(token="6819049569:AAHdaEjILbHFL7EvMBXh64Io1FAFfLrKC2U", proxy="http://10.111.222.1:8080/")
+    bot = Bot(token="6819049569:AAHdaEjILbHFL7EvMBXh64Io1FAFfLrKC2U")
     dp = Dispatcher(bot)
 
 
