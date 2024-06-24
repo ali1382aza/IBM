@@ -7,7 +7,7 @@ from aiogram.utils import executor
 import json
 
 
-token = 'd416a76ad6af5d4997aaffb78b802585636bf2f5'
+
 headers = {'Authorization': f'Token {token}'}
 
 async def start_command(message: types.Message):
@@ -686,15 +686,10 @@ async def list_arz3(message: types.Message):
     await message.reply("لطفا یک گزینه را انتخاب کنید", reply_markup=keyboard)
 
 
-headers2 = {
-    'Authorization': 'd416a76ad6af5d4997aaffb78b802585636bf2f5', 
-    'Content-Type': 'application/json'
-}
 
 
 async def BTCIRT_s(message: types.Message):
     url='https://api.nobitex.ir/users/markets/favorite'
-    data = {'market': 'BTCIRT'}
     response = requests.post(url, headers=headers)
     if response.status_code == 200:
         await message.reply("عملیات ثبت با موفیقت انجام شد")
@@ -706,8 +701,7 @@ async def BTCIRT_s(message: types.Message):
 
 async def BTCIRT_d(message: types.Message):
     url='https://api.nobitex.ir/users/markets/favorite'
-    data = {'market': 'BTCIRT'}
-    response = requests.delete(url, headers=headers2, json=data)
+    response = requests.delete(url, headers=headers)
     if response.status_code == 200:
         await message.reply("عملیات حذف با موفیقت انجام شد")
         
